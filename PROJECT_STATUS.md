@@ -129,7 +129,7 @@ validate-note + 人工语义验收
 | ffmpeg / ffprobe | 可用 |
 | Textual | 当前 `.venv` 未安装（非阻塞） |
 | curses | 可用，TUI fallback |
-| Git | 项目仍未初始化 Git；不影响功能验收，但正式继续迭代前建议建立版本历史 |
+| Git | 已初始化并关联 GitHub 远端：`https://github.com/Silhouette-my/Handouter` |
 
 ## 尚未通过的内容 = 正式验收本身
 

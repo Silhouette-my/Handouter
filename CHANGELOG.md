@@ -37,7 +37,8 @@
 
 ### 已知非阻塞项
 
-- 项目仍未初始化 Git/CI；legacy 单课脚本仍保留并有两处 `\\m` DeprecationWarning。
+- 已完成本地 Git 仓库初始化与 GitHub 远端开源仓库建立（`Silhouette-my/Handouter`）；CI 待进一步接入。
+- legacy 单课脚本仍保留并有两处 `\\m` DeprecationWarning。
 - 没有复杂阶段缓存 DAG；失败时清理临时产物后整任务重试。
 - 真实智云字段、签名媒体、整课长音频和真实 Agent 的语义质量尚待正式验收，不能由合成测试替代。
 
