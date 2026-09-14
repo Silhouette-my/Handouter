@@ -1,0 +1,29 @@
+[build-system]
+requires = []
+build-backend = "handouter_build"
+backend-path = ["."]
+
+[project]
+name = "handouter"
+version = "0.2.0"
+description = "Local-first lecture material preparation and Agent handoff"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+asr = [
+  "funasr>=1.4,<2",
+  "torch>=2",
+]
+tui = [
+  "textual>=0.50",
+]
+all = [
+  "funasr>=1.4,<2",
+  "torch>=2",
+  "textual>=0.50",
+]
+
+[project.scripts]
+handouter = "handouter.cli:main"
+

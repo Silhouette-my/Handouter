@@ -1,0 +1,56 @@
+# Local development environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+.DS_Store
+
+# Credentials and browser profiles; never commit signed replay URLs or cookies
+.env
+.env.*
+!.env.example
+*.cookie
+cookies*.json
+*storage_state*.json
+*auth_state*.json
+private/
+profiles/
+
+# Future per-session runtime data (not source code)
+workspace/
+workspaces/
+runs/
+logs/
+*.log
+*.part
+*.tmp
+
+# Existing private lecture assets and generated outputs in the project root
+/slides/
+/slides_meta.json
+/slides_ocr.json
+/ppt_list.json
+/video_info.json
+/course_info.json
+/urls.txt
+/debug_feishu.png
+/高级机器学习_*.md
+/高级机器学习_*.txt
+/test_clip_2min.txt
+
+# Large media and export bundles; intentional synthetic fixtures may be force-added
+*.m4a
+*.mp3
+*.wav
+*.mp4
+*.mkv
+*.webm
+*.zip
