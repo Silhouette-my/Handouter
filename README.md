@@ -92,6 +92,21 @@ PYTHONPATH=src .venv/bin/python -m handouter agent-run \
 
 ## 安装与环境检查
 
+### 推荐：统一安装与启动
+
+Windows 安装 **Python 3.11（含 Python Launcher）** 后，在解压或克隆的仓库中双击 `setup-handouter.cmd`；安装完成后双击 `start-handouter.cmd`。不用激活虚拟环境或逐个安装 ASR 包。FFmpeg 缺失时自动调用 winget（Windows 的“应用安装程序”提供）。
+
+macOS 安装 Python 3.11+（推荐 3.11），并准备 Homebrew 后，在仓库目录执行：
+
+```bash
+bash setup-handouter.command
+bash start-handouter.command
+```
+
+安装器创建或复用项目 `.venv`，安装 Handouter 与 ASR 依赖、检查/安装 FFmpeg，并实际导入 torch/torchaudio/FunASR、执行一次合成音频特征计算和 `pip check`。已有依赖满足要求时不强制重装；任何步骤失败都会停止并显示原因。FFmpeg 由系统包管理器安装，其余依赖留在项目虚拟环境中。安装需要联网，首次转写还会下载语音模型。
+
+更新代码后重新运行安装器即可。已有 NVIDIA/CUDA 定制环境会交给 pip 按依赖约束解析，不承诺自动配置显卡驱动或 CUDA；默认不要求 GPU。下面保留手动安装与离线用法。
+
 项目使用仓库内的 stdlib-only PEP 517 backend，因此**没有构建期第三方依赖**。macOS/Linux 的 core install 仍可完全离线：
 
 ```bash

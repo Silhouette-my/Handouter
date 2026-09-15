@@ -1,5 +1,11 @@
 # 变更记录
 
+## 2026-09-15 — 统一安装与启动入口
+
+- Windows 双击 setup/start 脚本，macOS 使用对应 Bash 入口；共用安装器管理项目 `.venv`、ASR extra 和 FFmpeg 检查/安装，不再要求逐个补包或激活环境。
+- 安装结束执行 ASR 原生导入、合成 fbank 与 `pip check`；已有环境不强制重装，失败可重试。Windows 安装仍需 Python 3.11 与 winget，macOS 需 Python/Homebrew。
+- 新增安装流程模拟回归；真实 Windows 安装和完整课程测试尚未完成。
+
 ## 2026-09-15 — 补齐 ASR 音频后端依赖
 
 - `asr` / `all` extra 增加 `torchaudio>=2`，避免 FunASR 在 Windows 上因缺少 torchaudio 或 kaldi-native-fbank 后端失败。
