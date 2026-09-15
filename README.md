@@ -124,6 +124,8 @@ PYTHONPATH=src .venv/bin/python -m handouter doctor
 
 `doctor` 会额外报告当前平台，并分开报告 core / media / ASR / TUI 是否可用，不会自动安装或修改环境。
 
+运行 `handouter run` 时，阶段进度条写入 stderr，最终结果 JSON 仍写入 stdout，方便终端查看或脚本解析。TUI 会在运行页顶部显示同一进度，包括资产检查、音频提取、ASR、工作区生成和最终交付。
+
 ## 推荐使用方式：直接选择资产 ZIP → 输出目录
 
 安装后，抓取脚本随包提供；源码开发态也可以直接使用根目录的 `zhiyun_exporter.user.js`。在已登录、自己有权访问的智云回放页面运行脚本，得到一个课程资产 ZIP。普通用户直接把这个**文件路径**交给 Handouter，不需要再创建或理解 input 目录：

@@ -455,11 +455,16 @@ def _run_task(stdscr, state: dict[str, Any], *, prompt_only: bool) -> tuple[bool
     process, job = start_task_process(cli_args, **kwargs)
     cancellation = None
     lines: list[str] = []
+    progress_line = {"text": "Working..."}
 
     def reader() -> None:
         assert process.stdout is not None
         for line in process.stdout:
-            lines.append(line.rstrip())
+            clean = line.rstrip()
+            if clean.startswith("[progress]"):
+                progress_line["text"] = clean
+            else:
+                lines.append(clean)
 
     thread = threading.Thread(target=reader, daemon=True)
     reader_started = False
@@ -471,7 +476,7 @@ def _run_task(stdscr, state: dict[str, Any], *, prompt_only: bool) -> tuple[bool
             height, width = stdscr.getmaxyx()
             stdscr.erase()
             _box(stdscr, 0, 0, max(5, height - 2), max(20, width - 2), " HANDOUTER / RUNNING ")
-            _safe_add(stdscr, 2, 2, "Working...  Q/Esc = cancel ffmpeg/ASR process group")
+            _safe_add(stdscr, 2, 2, progress_line["text"] + "  Q/Esc = cancel process group")
             for row, line in enumerate(lines[-max(1, height - 7) :], start=4):
                 _safe_add(stdscr, row, 2, line)
             stdscr.refresh()

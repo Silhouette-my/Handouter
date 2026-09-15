@@ -24,6 +24,14 @@ def _selected_modes(args: argparse.Namespace) -> list[str]:
     return [getattr(args, "mode", None) or "deep"]
 
 
+def _progress_event(stage: str, percent: int, detail: str = "") -> None:
+    width = 24
+    filled = round(width * max(0, min(100, percent)) / 100)
+    bar = "#" * filled + "-" * (width - filled)
+    suffix = f"  {detail}" if detail else ""
+    print(f"[progress] {stage:<10} [{bar}] {percent:3d}%{suffix}", file=sys.stderr, flush=True)
+
+
 def _lecture_args(parser: argparse.ArgumentParser, *, transcript: bool) -> None:
     parser.add_argument("--lecture-id", required=True, help="稳定讲次 ID；不能包含路径分隔符")
     parser.add_argument("--course-title", required=True, help="课程显示名称")
@@ -217,7 +225,9 @@ def _apply_agent_interaction(
 
 def _run_product(args: argparse.Namespace) -> int:
     asset = resolve_asset_zip(args.input_dir, args.asset)
+    _progress_event("检查资产", 0, "正在读取课程信息")
     identity = inspect_asset_zip(asset)
+    _progress_event("检查资产", 100, "完成")
     lecture_id = args.lecture_id or identity.lecture_id
     course_title = args.course_title or identity.course_title
     if not course_title:
@@ -237,6 +247,7 @@ def _run_product(args: argparse.Namespace) -> int:
         device=args.device,
         language=args.language,
         model_path=args.model_path,
+        progress=_progress_event,
     )
     payload = _build_payload(result)
     payload["input"] = {
@@ -244,12 +255,14 @@ def _run_product(args: argparse.Namespace) -> int:
         "asset": str(asset),
     }
     payload["output_directory"] = str(Path(args.output_dir).expanduser().resolve())
+    _progress_event("Agent/交付", 0, "正在准备最终交付")
     interaction, code = _apply_agent_interaction(
         result.prepare.workspace,
         agent=args.agent,
         agent_model=args.agent_model,
         bundle_output=args.bundle_output,
     )
+    _progress_event("Agent/交付", 100, "完成")
     payload["agent_interaction"] = interaction
     payload["agent_was_run"] = bool(interaction.get("agent_was_run"))
     print(json.dumps(payload, ensure_ascii=False, indent=2))

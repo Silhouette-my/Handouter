@@ -6,6 +6,14 @@ import shutil
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
+
+ProgressCallback = Callable[[str, int, str], None]
+
+
+def _progress(callback: ProgressCallback | None, stage: str, percent: int, detail: str = "") -> None:
+    if callback is not None:
+        callback(stage, percent, detail)
 
 from .asr import ASRResult, transcribe_sensevoice
 from .handoff import HandoffSummary, create_handoff
@@ -247,6 +255,7 @@ def build_from_audio(
     device: str = "auto",
     language: str = "auto",
     model_path: str | None = None,
+    progress: ProgressCallback | None = None,
 ) -> BuildResult:
     """ASR an existing local audio file, then prepare a validated handoff workspace."""
     lecture_id = validate_lecture_id(lecture_id)
@@ -257,6 +266,7 @@ def build_from_audio(
         raise FileExistsError(f"讲次工作区已存在，拒绝覆盖: {target}")
     scratch = root / f".{lecture_id}.asr-{uuid.uuid4().hex}"
     try:
+        _progress(progress, "ASR 转写", 0, "正在加载 SenseVoice")
         asr = transcribe_sensevoice(
             audio,
             scratch,
@@ -264,6 +274,8 @@ def build_from_audio(
             language=language,
             model_path=model_path,
         )
+        _progress(progress, "ASR 转写", 100, f"完成（{asr.segment_count} 个片段）")
+        _progress(progress, "生成工作区", 0, "正在导入材料并生成 handoff")
         prepared = prepare_lecture(
             root,
             lecture_id=lecture_id,
@@ -284,6 +296,7 @@ def build_from_audio(
             skill_path=skill_path,
             source_type="local_audio_asr",
         )
+        _progress(progress, "生成工作区", 100, "完成")
         persisted_asr = ASRResult(
             output_dir=prepared.workspace / "transcript",
             raw_path=prepared.workspace / "transcript" / "raw.json",
@@ -315,9 +328,12 @@ def build_from_asset_zip(
     device: str = "auto",
     language: str = "auto",
     model_path: str | None = None,
+    progress: ProgressCallback | None = None,
 ) -> BuildResult:
     """Browser asset ZIP -> private signed media URL in memory -> full local preparation."""
+    _progress(progress, "读取课程资产", 0, "正在读取 ZIP 元数据")
     media_source = read_private_media_source(asset_zip)
+    _progress(progress, "读取课程资产", 100, "完成")
     return build_from_media(
         workspace_root,
         lecture_id=lecture_id,
@@ -335,6 +351,7 @@ def build_from_asset_zip(
         language=language,
         model_path=model_path,
         source_type="zhiyun_asset_zip",
+        progress=progress,
     )
 
 
@@ -358,6 +375,7 @@ def build_from_media(
     language: str = "auto",
     model_path: str | None = None,
     source_type: str = "media_asr",
+    progress: ProgressCallback | None = None,
 ) -> BuildResult:
     """Extract audio from local/authorized media, transcribe it, then prepare handoff."""
     lecture_id = validate_lecture_id(lecture_id)
@@ -371,7 +389,10 @@ def build_from_media(
     audio_path = scratch_root / "audio.m4a"
     asr_dir = scratch_root / "asr"
     try:
+        _progress(progress, "提取音频", 0, "正在调用 ffmpeg")
         media = extract_audio(media_source, audio_path)
+        _progress(progress, "提取音频", 100, "完成")
+        _progress(progress, "ASR 转写", 0, "正在加载 SenseVoice")
         asr = transcribe_sensevoice(
             audio_path,
             asr_dir,
@@ -379,6 +400,8 @@ def build_from_media(
             language=language,
             model_path=model_path,
         )
+        _progress(progress, "ASR 转写", 100, f"完成（{asr.segment_count} 个片段）")
+        _progress(progress, "生成工作区", 0, "正在导入 PPT 并生成 handoff")
         prepared = prepare_lecture(
             root,
             lecture_id=lecture_id,
@@ -399,6 +422,7 @@ def build_from_media(
             skill_path=skill_path,
             source_type=source_type,
         )
+        _progress(progress, "生成工作区", 100, "完成")
         persisted_asr = ASRResult(
             output_dir=prepared.workspace / "transcript",
             raw_path=prepared.workspace / "transcript" / "raw.json",
