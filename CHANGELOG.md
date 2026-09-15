@@ -1,5 +1,10 @@
 # 变更记录
 
+## 2026-09-15 — 修复 Windows ASR extra 安装元数据
+
+- 修复自定义 PEP 517 构建后端遗漏 `Provides-Extra` / `Requires-Dist` 元数据的问题。
+- Windows 用户现在执行 `python -m pip install ".[asr]"` 会实际安装 `funasr` 和 `torch`，不再出现 “does not provide the extra 'asr'” 警告。
+
 ## 2026-09-15 — 双端运行进度反馈
 
 - `handouter run` 增加阶段进度条，写入 stderr，不污染机器可读的 JSON stdout。

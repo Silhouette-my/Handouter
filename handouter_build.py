@@ -48,6 +48,10 @@ def _metadata_text() -> str:
         f"Requires-Python: {project.get('requires-python', '>=3.11')}",
     ]
     lines.extend(f"Requires-Dist: {dependency}" for dependency in project.get("dependencies", []))
+    for extra, dependencies in project.get("optional-dependencies", {}).items():
+        lines.append(f"Provides-Extra: {extra}")
+        for dependency in dependencies:
+            lines.append(f'Requires-Dist: {dependency}; extra == "{extra}"')
     return "\n".join(lines) + "\n"
 
 
