@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Ensure ffmpeg is available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            ffmpeg -version | head -1
+            ffprobe -version | head -1
+            exit 0
+          fi
+          case "$RUNNER_OS" in
+            Linux)
+              sudo apt-get update
+              sudo apt-get install -y ffmpeg
+              ;;
+            macOS)
+              brew install ffmpeg
+              ;;
+            Windows)
+              choco install ffmpeg -y --no-progress
+              ;;
+            *)
+              echo "Unsupported runner OS: $RUNNER_OS" >&2
+              exit 2
+              ;;
+          esac
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      - name: Run Python regressions
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONUTF8: "1"
+        run: python -m unittest discover -s tests -v
+
+      - name: Check browser exporter syntax
+        shell: bash
+        run: node --check zhiyun_exporter.user.js
+
+      - name: Verify clean installation and doctor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .ci-venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            PY=".ci-venv/Scripts/python.exe"
+            "$PY" -m pip install .
+          else
+            PY=".ci-venv/bin/python"
+            "$PY" -m pip install --no-index .
+          fi
+          "$PY" -m handouter --help >/dev/null
+          "$PY" -m handouter doctor
+          "$PY" - <<'PY'
+          import handouter
+          assert handouter.__version__ == "0.2.0", handouter.__version__
+          print("Handouter", handouter.__version__)
+          PY
+
+      - name: Ensure tests did not modify tracked files
+        shell: bash
+        run: git diff --exit-code

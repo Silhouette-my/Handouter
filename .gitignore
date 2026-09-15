@@ -24,7 +24,10 @@ cookies*.json
 private/
 profiles/
 
-# Future per-session runtime data (not source code)
+# Per-session/user runtime data (not source code)
+input/
+output/
+outputs/
 workspace/
 workspaces/
 runs/

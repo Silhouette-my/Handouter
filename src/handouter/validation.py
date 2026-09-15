@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -26,6 +27,57 @@ class NoteValidationReport:
     errors: tuple[str, ...]
     image_links: int
     sha256: str | None
+    warnings: tuple[str, ...] = ()
+
+
+class _VisibleNoteText(HTMLParser):
+    """Readability view only; resource and safety checks still use the full note."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self.details: list[bool] = []
+        self.summaries: list[int] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag == "details":
+            self.details.append(not any(name == "open" for name, _value in attrs))
+            self.parts.append("\n")
+        elif tag == "summary":
+            self.summaries.append(len(self.details))
+        elif tag in {"p", "br"} and not any(self.details):
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "details" and self.details:
+            depth = len(self.details)
+            self.details.pop()
+            self.summaries = [level for level in self.summaries if level < depth]
+            self.parts.append("\n")
+        elif tag == "summary" and self.summaries:
+            self.summaries.pop()
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        summary_visible = (
+            bool(self.summaries)
+            and self.summaries[-1] == len(self.details)
+            and not any(self.details[:-1])
+        )
+        if not any(self.details) or summary_visible:
+            self.parts.append(data)
+
+
+def _visible_note_text(text: str) -> str:
+    parser = _VisibleNoteText()
+    try:
+        parser.feed(text)
+        parser.close()
+    except (AssertionError, ValueError):
+        # Readability parsing must not abort validation of malformed Agent text.
+        return text
+    # An unclosed fold must not hide the remainder from readability warnings.
+    return text if parser.details else "".join(parser.parts)
 
 
 def _safe_relative(value: Any) -> str:
@@ -70,6 +122,12 @@ def validate_workspace(workspace: str | Path, *, update_state: bool = False) -> 
             errors.append("state 与 sources 的 mode 不一致")
         if handoff_state.get("expected_output") != sources.get("expected_output"):
             errors.append("state 与 sources 的 expected_output 不一致")
+        if handoff_state.get("modes", [handoff_state.get("mode")]) != sources.get("modes", [sources.get("mode")]):
+            errors.append("state 与 sources 的 modes 不一致")
+        if handoff_state.get("expected_outputs", {handoff_state.get("mode"): handoff_state.get("expected_output")}) != sources.get("expected_outputs", {sources.get("mode"): sources.get("expected_output")}):
+            errors.append("state 与 sources 的 expected_outputs 不一致")
+        if handoff_state.get("format_profile", "clean") != sources.get("options", {}).get("format_profile", "clean"):
+            errors.append("state 与 sources 的 format_profile 不一致")
 
     for entry in manifest.get("files", []):
         try:
@@ -185,12 +243,42 @@ def validate_workspace(workspace: str | Path, *, update_state: bool = False) -> 
         if int(slides_manifest.get(key, 0)) != actual:
             errors.append(f"manifest.slides.{key} 与实际索引不一致")
 
-    try:
-        expected_output = _safe_relative(sources.get("expected_output"))
-        if not expected_output.startswith("notes/"):
-            errors.append("expected_output 必须位于 notes/ 下")
-    except ValueError as exc:
-        errors.append(str(exc))
+    raw_expected_outputs = sources.get("expected_outputs")
+    expected_outputs = raw_expected_outputs if isinstance(raw_expected_outputs, dict) and raw_expected_outputs else {sources.get("mode"): sources.get("expected_output")}
+    for mode_name, raw_path in expected_outputs.items():
+        try:
+            expected_output = _safe_relative(raw_path)
+            if mode_name not in {"verbatim", "full", "deep", "summary"}:
+                errors.append(f"expected_outputs 包含无效模式: {mode_name}")
+            if not expected_output.startswith("notes/"):
+                errors.append(f"{mode_name} 输出必须位于 notes/ 下")
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    skill_plan = sources.get("skill")
+    if isinstance(skill_plan, dict):
+        entry = skill_plan.get("entry")
+        modules = skill_plan.get("modules")
+        try:
+            entry_rel = _safe_relative(entry)
+            entry_path = workspace / entry_rel
+            if not entry_path.is_file() or entry_path.is_symlink():
+                errors.append("sources.skill.entry 不存在或不是普通文件")
+        except (TypeError, ValueError):
+            errors.append("sources.skill.entry 无效")
+        if not isinstance(modules, list):
+            errors.append("sources.skill.modules 必须是列表")
+        else:
+            for idx, module in enumerate(modules, 1):
+                try:
+                    module_rel = _safe_relative(module)
+                    module_path = workspace / module_rel
+                    if not module_path.is_file() or module_path.is_symlink():
+                        errors.append(f"Skill 模块缺失: {module_rel}")
+                    if not module_rel.startswith("handoff/skill/"):
+                        errors.append(f"Skill 模块必须位于 handoff/skill/: {module_rel}")
+                except (TypeError, ValueError):
+                    errors.append(f"Skill 第 {idx} 个模块路径无效")
 
     if sources.get("transcript", {}).get("segments_path") != transcript_manifest.get("segments_path"):
         errors.append("sources 与 manifest 的 segments_path 不一致")
@@ -224,6 +312,7 @@ def validate_note_output(
     """Validate one Agent-produced Markdown structurally, without claiming semantic correctness."""
     workspace = Path(workspace)
     errors: list[str] = []
+    warnings: list[str] = []
     image_links = 0
     output_hash: str | None = None
     output_rel: str | None = None
@@ -232,7 +321,7 @@ def validate_note_output(
         state = read_json(workspace / "state.json")
         sources = read_json(workspace / "handoff" / "sources.json")
     except (OSError, ValueError, json.JSONDecodeError) as exc:
-        return NoteValidationReport(False, None, (f"无法读取 handoff/state: {exc}",), 0, None)
+        return NoteValidationReport(False, None, (f"无法读取 handoff/state: {exc}",), 0, None, ())
 
     candidate = output if output is not None else sources.get("expected_output")
     try:
@@ -268,7 +357,31 @@ def validate_note_output(
         errors.append(str(exc))
         text = ""
 
-    embed_slides = bool(sources.get("options", {}).get("embed_slides"))
+    options = sources.get("options", {})
+    embed_slides = bool(options.get("embed_slides"))
+    format_profile = str(options.get("format_profile") or "clean")
+    mode = str(sources.get("mode") or "")
+    raw_outputs = sources.get("expected_outputs")
+    if output_rel and isinstance(raw_outputs, dict):
+        for mode_name, expected_path in raw_outputs.items():
+            if expected_path == output_rel:
+                mode = str(mode_name)
+                break
+
+    analysis_text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    visible_text = _visible_note_text(analysis_text)
+    prose_text = re.sub(r"!\[[^\]]*\]\([^)]+\)", "", visible_text)
+    if format_profile == "clean":
+        if re.search(r"\b(?:seg|occ)-\d{3,}\b", visible_text):
+            warnings.append("clean 格式正文仍显示 seg/occ 来源 ID；应放入默认折叠的本章时间与来源 details 中")
+        if re.search(r"(?:transcript|slides|handoff)/(?:[^\s`]+)", prose_text):
+            warnings.append("clean 格式正文仍显示内部工作区路径")
+        if re.search(r"^##?\s*(?:讲义编制说明|讲义元信息|材料说明|任务配置|处理流程)", visible_text, flags=re.M):
+            warnings.append("clean 格式包含面向工程处理的元信息章节")
+    if mode in {"verbatim", "full"} and re.search(r"原始\s*ASR", analysis_text, flags=re.I) and re.search(r"精修|清理|整理", analysis_text):
+        errors.append(f"{mode} 模式不应生成原始 ASR 与整理稿双轨对照；只保留对应的单一阅读成品")
+    if mode == "summary" and len(visible_text) > 20_000:
+        warnings.append("summary 过长，可能偏离快速阅读目标")
     # Markdown image links only; remote image links are allowed only when external
     # web augmentation was explicitly enabled, but local slide links are always verified.
     for match in re.finditer(r"!\[[^\]]*\]\(([^)]+)\)", text):
@@ -290,7 +403,7 @@ def validate_note_output(
         except (OSError, ValueError):
             errors.append(f"图片链接无效或越出工作区: {raw_link}")
 
-    report = NoteValidationReport(not errors, output_rel, tuple(errors), image_links, output_hash)
+    report = NoteValidationReport(not errors, output_rel, tuple(errors), image_links, output_hash, tuple(warnings))
     if update_state:
         try:
             state["agent_output"] = {
@@ -299,6 +412,7 @@ def validate_note_output(
                 "sha256": output_hash,
                 "image_links": image_links,
                 "errors": list(report.errors),
+                "warnings": list(report.warnings),
                 "semantic_review": "required",
             }
             _dump(workspace / "state.json", state)

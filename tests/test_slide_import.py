@@ -197,6 +197,14 @@ class SlideZipImportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.run_import()
 
+    def test_windows_reserved_zip_member_is_rejected_cross_platform(self):
+        self.make_zip(
+            [{"filename": "CON.png", "seconds": 1}],
+            images={"slides/CON.png": PNG},
+        )
+        with self.assertRaises(ValueError):
+            self.run_import()
+
     def test_symlink_archive_member_is_rejected(self):
         with zipfile.ZipFile(self.archive, "w") as archive:
             link = zipfile.ZipInfo("slide.png")

@@ -41,7 +41,9 @@ def _run(command: list[str]) -> subprocess.CompletedProcess[str]:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=os.environ.copy(),
+        env={**os.environ, "PYTHONUTF8": "1"},
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
 

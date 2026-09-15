@@ -1,5 +1,126 @@
 # 变更记录
 
+## 2026-09-15 — 章节来源折叠与最终核对折叠
+
+- 按用户澄清，将时间/来源粒度修正为每个主要章节（`##`）一个默认折叠框；段落、列表、表格和子小节共用章节来源，不逐自然段标注。
+- 最终待核对清单放入默认关闭的 HTML `details`，无疑点时省略；影响作业和考核行动的未定事项继续保留在开头可见重点框。
+- 同步生成 Prompt、Skill 模块、手工模板、项目约束和验收要求；未改写既有 notes，新格式真实长课验收仍待刷新 Prompt 后执行。
+
+## 2026-09-15 — 课堂顺序、考核重点框与逐段折叠来源
+
+- 按用户要求统一 verbatim/full/deep 为实际课堂顺序；deep 保留深度但不重排章节，只有 summary 可按主题重组。
+- 新增公共 `references/common/presentation.md`：作业、小测、考试、小组任务和考核要求在正文前使用可见 `[!IMPORTANT]` 框；课程信息、逐段真实时间/来源使用默认折叠的 HTML `details`，未知和非连续来源明确处理。
+- 同步自动 Prompt、手工 fallback、各模式/格式/执行模块及项目约束；公共模块按每次 handoff 物化并随 wheel 打包，保持薄 Skill 入口。
+- clean 可读性告警区分折叠内容、可见 summary 和 open 状态；安全/图片检查仍扫描全文，双轨 ASR 不能藏在折叠内规避校验。旧 workspace 不因缺少新格式被追溯判错。
+- 验证：162 项测试中 161 通过、1 项 Windows 专属测试跳过；JS 语法、doctor、diff 检查通过。未重生成现有真实 notes，新规则仍需刷新 Prompt 后实际验收；未提交。
+
+## 2026-09-15 — 真实课程新版四模式 Codex CLI 验收
+
+- 使用用户授权的真实 ZIP，核对讲次与全部 142 张 PPT 哈希后，在独立副本复用 517 个 ASR 段，刷新四模式 clean/嵌图 handoff，真实调用 Codex CLI 生成新版本。
+- 四份 notes 的 runner/hash 检查及默认多输出结构校验全部通过；独立 AI 语义核对通过，仍保留各版源材料待核对项，不替代教师确认。
+- 原始 workspace 156 个文件、测试副本 152 个受保护文件与源 ZIP 均未变化。完整报告与机器可读证据保存在忽略的 `output/acceptance-20260915-001/`。
+- CLI 生成约 31 分 20 秒；其内部子代理启动失败后单 Agent 完成。未重跑 ASR、未测试 GUI/Claude/Windows/取消，不代表第二门不同课程或完整产品验收完成。本轮未修改生产代码、未提交。
+
+## 2026-09-15 — 接管审查后的取消、发布与校验修复
+
+- POSIX 取消后即使 Handouter 根进程已退出，仍对原进程组执行 SIGKILL 后备清理；TUI 等待清理线程结束，异常启动日志线程时也会收尾。
+- Windows TUI 任务增加 Job Object（`KILL_ON_JOB_CLOSE`）：bootstrap 在启动业务前加入 Job，TUI 持有唯一保留句柄，任务退出或取消时关闭 Job 清理后代；无法建立 Job 时明确失败，不启动业务。保留 CTRL_BREAK / taskkill 辅助取消路径。
+- GUI bundle 在 hard-link 不可用时，排他创建失败不会删除其他任务的目标；自身复制失败时核对文件身份后清理，保留已经替换的文件。
+- `prompt --mode` 显式选择现在优先于工作区旧 modes；优先级为 `--modes` → `--mode` → 旧选择，省略选择仍沿用原配置。
+- `validate-note` 默认检查全部 expected outputs；多成品结果包含 `outputs` 路径映射和 `reports` 分模式报告，聚合退出码与 state。显式 `--output` 和单成品任务保持原单文件 JSON；结构通过仍要求人工语义复核。
+- 验证：macOS 全量 **156 项，155 通过、1 项 Windows Job Object 实测跳过**；含真实合成 POSIX 父子进程取消、managed CLI bootstrap、bundle 并发/失败清理、刷新优先级和多输出校验回归。JS 语法、doctor 与 diff 检查通过。
+- 未运行真实外部 Agent 或真实课程生成；Windows Job Object 实际 API/嵌套 Job 行为仍待 Windows runner / 真机验收，未提交或发布。
+
+## 2026-09-15 — verbatim / full 输出层级拆分
+
+- 新增 `verbatim` 逐字版：继承原 `full` 的忠实整理目标，尽量贴近课堂原话，只清理 ASR 噪声、无意义口癖、机械结巴和明显重复碎片。
+- 重新定义 `full` 为完整整理版：保留几乎全部有效信息，但主动去除口语脚手架、重复铺垫、自我重复和冗余复述，允许跨相邻 segment 合并改写为自然书面表达；不压缩成 summary。
+- `verbatim` / `full` 都明确禁止“一 ASR/VAD segment 一段”。逐字版按连续话题/问答/例子自然分段；full 先跨 segment 聚合语义，再按微主题和推理阶段形成段落。
+- Prompt 新增两种高覆盖率输出的显式定位，分层 Skill 新增 `references/modes/verbatim.md` 并重写 `full.md`；multi-output 规则禁止两种模式互相污染。
+- TUI 新增独立 `Full polished notes` 与 `Verbatim transcript` 复选框；CLI `--mode/--modes` 新增 `verbatim`，两种成品可同时生成并独立版本化。
+- 新增 full/verbatim 模块、Prompt 定位、TUI 映射和 wheel 打包回归；macOS 本机完整回归 **140 / 140** 通过。
+
+## 2026-09-15 — macOS / Windows 双端适配第一阶段
+
+### 平台运行层
+
+- 新增 `src/handouter/platform_support.py`：统一任务进程组创建与取消。macOS/Linux 使用 `start_new_session + SIGTERM/SIGKILL`；Windows 使用 `CREATE_NEW_PROCESS_GROUP`，优先 `CTRL_BREAK_EVENT`，超时后 `taskkill /PID <pid> /T /F`，避免 ffmpeg/FunASR/CLI Agent 子进程残留。
+- TUI 子进程管道固定按 UTF-8 解码并设置 `PYTHONUTF8=1`；Agent runner 和 ffmpeg/ffprobe 调用同样使用 UTF-8 + replacement fallback，降低 Windows 系统代码页导致中文课程名/日志解码失败的风险。
+- GUI handoff bundle 继续优先 hard-link 排他发布；Windows 可移动盘、网络盘等不支持 hard-link 时安全退回 exclusive-create copy，仍不覆盖既有 bundle。
+
+### Windows 路径 / TUI / 打包
+
+- `normalize_terminal_path()` 按平台分流：macOS/Linux 保留 POSIX 拖拽转义逻辑；Windows 不再使用 POSIX `shlex`，支持 `C:\\...`、带引号路径、UNC (`\\\\server\\share`) 和 `file:///C:/...`。
+- `lecture_id` 改为跨平台可移植命名：拒绝 `:*?\"<>|` 等 Windows 非法字符，以及 `CON/NUL/PRN/AUX/COM1..9/LPT1..9` 保留设备名。
+- `pyproject.toml` 新增条件依赖 `windows-curses>=2.4; sys_platform == 'win32'`；自定义 PEP 517 backend 同步将 runtime dependency 写入 wheel `METADATA`。
+- `doctor` 新增 `platform` 字段；Windows TUI 检查显示 `windows-curses` 版本或安装提示。
+- GitHub Actions 扩展为 `ubuntu-latest / macos-latest / windows-latest` 三平台矩阵；Windows runner 自动安装 ffmpeg、安装 `windows-curses` 条件依赖并运行 doctor。真实 Windows runner 需本批改动 push 后首次确认。
+
+### 验证
+
+- 新增 Windows drive/quoted/UNC/file-URI 路径、POSIX 拖入回归、Windows/Unix 进程组策略、`taskkill /T /F`、Windows doctor、portable lecture ID、GUI bundle hard-link fallback 和 wheel dependency metadata 测试。
+- macOS 本机完整回归 **141 / 141** 通过；`node --check zhiyun_exporter.user.js`、`doctor`、`git diff --check`、macOS clean venv `pip install --no-index .` 与 wheel `Requires-Dist` 检查均通过。
+- 当前尚未宣称真实 Windows 运行通过；下一步以 GitHub `windows-latest` 和用户 Win11/NVIDIA 机器实测结果为准。
+
+## 2026-09-15 — 全屏 ASCII TUI 与多交付物 handoff
+
+### TUI / 产品交互
+
+- 普通用户 TUI 固定为 Python 标准库 `curses` 的全屏 ASCII 仿 GUI；Source / Deliverables / Options / Actions / Status 面板始终可见，不再使用逐项问答式 shell wizard，也不再依赖 Textual。
+- Deep notes、Summary notes 与 Clean transcript 改为独立复选框，可同时选择；清理逐字稿是额外可选成品，底层 `transcript/transcript.txt` 仍始终保留为 ASR 证据。
+- TUI 支持方向键/Tab 导航、Space 多选、Enter 编辑/执行，以及 F5 运行、P 只刷新 Prompt、Q 退出；长任务仍由独立进程组执行并可取消。
+- 删除普通 TUI 的 `Input Dir / SCAN ZIP` 概念：`Asset ZIP` 直接接受文件路径，支持把 Finder 中的 `.zip` 拖入终端；绝对 ZIP 路径不再依赖默认 `input/` 是否存在。
+- 新文本编辑器在编辑模式内占用 `←/→` 做光标移动，并支持 Home/End/Backspace/Delete/Ctrl-A/E/U/K；普通界面的左右键仍只切换 clean/traceable 和 ASR 设备。
+- 拖入路径会规范化终端常见的单/双引号、反斜杠转义空格和 `file://` URI；中文/全角字符按终端显示宽度裁剪与定位光标，避免 97×30 等较窄窗口出现框线错位。
+- `RUN` 改为智能续跑：若同 lecture workspace 已经 `materials/handoff ready`，配置一致时直接继续到 GUI bundle 或 CLI Agent；配置变化时只 refresh Prompt，不重复 ffmpeg/ASR。失败后 STATUS 保留真实错误摘要，不再只显示 `code 2`。
+
+### 多输出 handoff
+
+- handoff schema 新增 `modes` 与 `expected_outputs`，一个 Prompt 可同时要求 Agent 生成多个独立 Markdown；保留 `mode` / `expected_output` 单数兼容字段，避免破坏既有工作区和旧工具。
+- `handouter run` / `handouter prompt` /高级材料入口新增 `--modes`；未传时继续兼容原 `--mode`。
+- `deep`、`summary`、`full` 各自独立版本化：例如已有 `deep-001.md` 时，刷新为 deep+summary+full 会指向 `deep-002.md`、`summary-001.md`、`full-001.md`。
+- Prompt 明确交付物数量、各文件目标和“不得把多种笔记拼进同一 Markdown”；`product_artifacts` 与 workspace validator 同步支持多输出。
+
+### 验证
+
+- 新增多选交付物、可选清理逐字稿、ASCII TUI `--modes` 映射、多输出 Prompt、Prompt-only 独立版本号专项回归。
+- 当前完整回归 **123 / 123** 通过；覆盖绝对 ZIP、拖拽/中文路径、智能续跑、Agent interaction、progressive Skill、GUI bundle 原子发布和 CLI Agent 校验。`node --check zhiyun_exporter.user.js`、`doctor`、`git diff --check`、离线 clean install、packaged userscript/Skill 和 Markdown 链接检查均通过。
+
+## 2026-09-14 — 产品化 TUI、Prompt 格式约束与可重复 Prompt 迭代
+
+### 普通用户路径
+
+- 新增 `handouter run --input-dir ... --output-dir ...`：用户只需要把浏览器资产 ZIP 放进输入目录并指定成果目录；单 ZIP 自动选择，多 ZIP 要求明确选择。新版 ZIP 会自动读取课程标题并从 `tenant/course/sub` 生成稳定讲次 ID，两者仍允许手动覆盖。
+- 重做普通用户 TUI 为**固定全屏 ASCII curses 仿 GUI**：Source / Deliverables / Options / Actions / Status 面板始终可见，不再使用逐项问答式 shell wizard；raw ASR、manifest、state、alignment 等内部文件不再要求普通用户配置。
+- Deep notes、Summary notes 与 Clean transcript 改为独立复选框：deep/summary 可同时选择，清理逐字稿独立可选；一个 Prompt 要求 Agent 将每种成果写入各自 Markdown。
+- 新增 TUI“扫描 ZIP”“查看 Prompt”“显示成果路径”“只更新 Prompt”。Prompt-only 会复用已有 transcript/slides，不重新运行 ffmpeg/SenseVoice，多种交付物按各自已有文件独立递增版本号。
+- wheel 现在同时携带 `zhiyun_exporter.user.js` 和 `zhiyun-lecture-notes` Skill/手工 Prompt fallback；安装后不依赖源码仓库 `.agents/`。
+- 默认 `input/`、`output/`、`outputs/` 加入 `.gitignore`，避免私有资产、转写和讲义被意外提交。
+
+### Prompt 与最终格式
+
+- 新增 `format_profile=clean|traceable`，默认 `clean` 面向直接阅读：正文不显示 seg/occ、内部 JSON 路径和处理统计；`traceable` 只在主要章节保留一条简短可见来源。
+- 根据完整长课真实 `full-001.md` 反馈，`full` 明确禁止“原始 ASR vs 精修稿”双栏、逐 segment 表和重复原始 ASR，只输出单栏清理逐字稿。
+- `deep` 约束为核心观点→课堂解释/推导→例子/条件，补充内容必须标明；默认禁止装饰性 Mermaid/ASCII/超宽正文表格和工程型“讲义元信息”前言。
+- `summary` 统一为 `本讲速览`（5–10 条）+ 3–8 个主题小节，目标 5–10 分钟阅读。
+- `validate-note` 新增格式检查：full 双轨格式直接报错；clean 模式对可见 seg/occ、内部路径和工程元信息发出 warning。
+- 新增 `handouter prompt <workspace>`：旧 Prompt/sources 自动归档到 `handoff/history/`；支持 `--modes deep summary full` 多输出，每种模式独立选择下一个 `notes/<mode>-NNN.md`，既有讲义和材料不覆盖。
+- handoff schema 新增 `modes` / `expected_outputs`，同时保留 `mode` / `expected_output` 单数兼容字段，避免破坏既有工作区和旧工具。
+
+### 验证
+
+- 完整回归增加到 **104 / 104** 通过；新增输入/输出目录、资产自动识别、Prompt-only、ASCII TUI 多选、多输出 handoff、独立版本号、格式约束与 packaged asset 回归。
+- 在用户已经跑通的完整长课工作区副本上实测 Prompt-only：旧 `full-001.md` 保持不变，新 Prompt 指向 `full-002.md`；旧双轨 full 被新版 validator 正确判为格式偏航。
+- 全新 wheel 安装后实际确认 packaged userscript 和 packaged Skill 均可发现。
+
+## 2026-09-14 — GitHub CI 与验收基线补充
+
+- 确认仓库已初始化 Git、`main` 已关联 `origin/main`，并已有 0.2.0-rc 基线提交；私有课程媒体、PPT、`.venv` 等仍由 `.gitignore` 排除。
+- 新增 `.github/workflows/ci.yml`：在 Ubuntu / Python 3.11 上运行完整 `unittest` 回归，检查 `zhiyun_exporter.user.js` 语法，确保 ffmpeg/ffprobe 可用，并在全新 venv 中使用 `pip install --no-index .` 验证零网络核心安装。
+- CI 最后执行 `git diff --exit-code`，防止测试或构建步骤静默修改 tracked 文件。
+- 同步 `PROJECT_STATUS.md` 与 `docs/ROADMAP.md`；release/tag 尚待真实验收前建立 `v0.2.0-rc1`，正式验收通过后再发布 `v0.2.0`。
+
+
 ## 2026-09-14 — 0.2.0 验收前工程完成
 
 ### 主链路

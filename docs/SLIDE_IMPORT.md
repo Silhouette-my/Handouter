@@ -115,6 +115,6 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python download_slides.py \
 
 ## 验证状态
 
-当前完整项目回归为 **89 / 89 通过**。其中 `tests/test_slide_import.py` 继续覆盖 35 项 ZIP 专项回归；另外的 importer、浏览器契约、workspace、媒体、ASR、TUI、安装等测试共同构成 89 项。
+当前完整项目回归为 **141 / 141 通过（macOS 本机）**。其中 `tests/test_slide_import.py` 继续覆盖 ZIP 专项回归；其余测试覆盖 importer、浏览器契约、workspace、媒体、ASR、ZIP 直接路径/拖入、中文终端宽度、ASCII TUI、多输出 handoff、Windows 路径/进程树/doctor、portable 文件名、安装和 Prompt/格式约束。
 
 尚需真实验收：智云 v1.4 页面字段、真实 CDN/m3u8/mp4、整课 ASR 和真实 Agent 讲义语义，详见 [ACCEPTANCE.md](ACCEPTANCE.md)。

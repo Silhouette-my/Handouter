@@ -15,11 +15,11 @@
         ↓
 标准工作区 + 时间证据
         ↓
-Agent handoff
+Agent handoff + progressive Skill plan
         ↓
-用户自己的 Agent
+GUI handoff ZIP  /  Codex·Claude CLI 自动执行
         ↓
-结构校验 + 人工语义验收
+结构/篡改校验 + 人工语义验收
 ```
 
 0.2.0 的主要工程阻断已经解决；现在不能靠更多合成测试替代的，是**真实智云字段/签名媒体、完整长课和真实 Agent 的语义验收**。
@@ -60,9 +60,9 @@ Agent handoff
 
 状态：**已修复。**
 
-`handoff/PROMPT.md` 与 `sources.json` 自动生成，绑定 Skill、课程材料、三档模式、PPT 两策略和新的 notes 输出路径。CLI 明确 `agent_was_run: false`；Handouter 不冒充已经生成讲义。
+`handoff/PROMPT.md` 与 `sources.json` 自动生成，绑定课程材料、可组合交付物、PPT 策略和新的 notes 输出路径；`sources.json.skill.modules` 进一步给出本次唯一 Skill module plan，并把对应模块物化到 `handoff/skill/`。
 
-Agent 输出后提供 `validate-note`，但结构通过仍标记 `semantic_review: required`。
+默认/GUI 路径不运行模型，只生成安全 bundle；用户显式选择 Codex/Claude CLI 时 Handouter 可自动执行本机 Agent。自动执行后会复核课程材料、handoff/control files、旧 notes 与新输出；结构通过仍标记 `semantic_review: required`，不冒充语义已验收。
 
 ### 6. 浏览器导出器猜时间单位、未知时间伪零
 
@@ -93,11 +93,12 @@ v1.4 公共 `slides_meta.json` 不再保存图片 URL，视频/page URL 放进 Z
 
 ### 9. 无可复现安装 / TUI 依赖阻塞
 
-状态：**核心安装与 TUI fallback 已解决。**
+状态：**macOS/Linux 核心安装已解决；Windows 已加入条件依赖与 CI，真实 runner 待验收。**
 
-- stdlib-only `handouter_build.py` 允许全新 venv `pip install --no-index .` 和 `-e .`；无需联网拉 setuptools。
-- Textual 是可选高级 TUI；未安装时自动使用标准库 curses。
-- `doctor` 分开报告 core/media/asr/tui readiness，不自动重装用户环境。
+- stdlib-only `handouter_build.py` 不需要联网拉 setuptools；macOS/Linux 全新 venv 可 `pip install --no-index .`。
+- 普通用户 TUI 使用同一套 curses ASCII 界面：macOS/Linux 使用系统 curses；Windows wheel 声明 `windows-curses>=2.4; sys_platform == 'win32'`，自定义 backend 会把该条件依赖写入 `METADATA`。
+- `doctor` 新增 platform 字段并分开报告 core/media/asr/tui readiness；Windows 会显示 `windows-curses` 版本或安装提示。
+- GitHub Actions 已扩为 Linux/macOS/Windows 三平台矩阵；真实 Windows runner 需 push 后确认，当前不把纯函数模拟测试扩大为“Windows 已通过”。
 
 ## 当前仍需正式验收的问题
 
@@ -109,9 +110,9 @@ v1.4 公共 `slides_meta.json` 不再保存图片 URL，视频/page URL 放进 Z
 
 合成本地 HTTP 链路已通过，但真实 CDN/m3u8/mp4 的 Range、Referer、代理、zju-connect、403 和签名过期行为必须实测。过期应失败并要求重新导出，不能产出假成功音频。
 
-### C. 完整长课 ASR
+### C. 完整长课运行边界
 
-2 分钟真实音频已验证，不等于 1–3 小时整课的内存、耗时、MPS 稳定性和取消边界已经通过。整课验收还要检查 segment 时间范围和长期运行行为。
+用户已实际跑通一门完整长课并生成三种成品，证明主链路可以完成长任务；仍需补记内存/耗时，并人工测试取消边界。分层 Skill 会在 segments 足够多或纯 TXT 足够长时自动加入 `execution/long-course.md`。
 
 ### D. 真实 Agent 语义质量
 
@@ -122,15 +123,19 @@ v1.4 公共 `slides_meta.json` 不再保存图片 URL，视频/page URL 放进 Z
 - summary 没删掉结论成立的前提；
 - ASR 术语纠错和 PPT 对照符合课程原意。
 
-至少两门不同真实课程 × 三模式必须人工抽样。
+至少两门不同真实课程、覆盖多种交付物组合必须人工抽样。
 
-### E. TUI 人工取消
+### E. Agent interaction 真实 E2E
 
-Textual/curses 都已实现进程组取消逻辑并有代码级回归，但仍应在一个可丢弃的长 ASR 任务上人工按取消，确认系统进程确实结束。
+GUI bundle 的内容/隐私边界与 Codex/Claude adapter 已有合成回归。2026-09-15 按用户授权，Codex 在独立真实课程副本中完成新版四模式生成，结构/哈希及独立 AI 语义核对通过。仍需验收 GUI 上传、Claude、取消和 Windows 宿主行为；材料疑点和人工语义复核边界保留，最新证据以 `PROJECT_STATUS.md` 为准。
+
+### F. TUI 人工取消
+
+ASCII curses TUI 已实现跨平台任务树取消逻辑并有代码级回归：macOS/Linux 新 session + SIGTERM/SIGKILL；Windows `CREATE_NEW_PROCESS_GROUP` + CTRL_BREAK_EVENT / `taskkill /T /F`。仍应分别在 macOS 和 Windows 的可丢弃长任务上人工取消，确认 ffmpeg/FunASR 以及后续 CLI Agent 子进程都结束。
 
 ## 非阻塞技术债
 
-- 项目尚未初始化 Git/CI，不能依赖版本历史恢复并行改动；正式继续迭代前建议初始化版本控制。
+- Git 与最小 GitHub Actions CI 已建立；release/tag 尚待按 `docs/RELEASE.md` 在真实验收节点执行。
 - 当前失败恢复是“临时产物清理 + 整任务重试”，不是阶段级 DAG/断点缓存。
 - ZIP 图片做文件头/大小检查，不等同于针对所有畸形图像的安全解码审计。
 - 自动 OCR、术语表、SRT/VTT、章节来源覆盖率、讲义版本 diff 尚未产品化。
@@ -143,14 +148,15 @@ Textual/curses 都已实现进程组取消逻辑并有代码级回归，但仍�
 | `src/handouter/` | 0.2.0 生产代码 |
 | `zhiyun_exporter.user.js` | 浏览器授权资产导出器 v1.4 |
 | `download_slides.py` | 旧 CLI 兼容包装；ZIP 逻辑代理 `handouter.importers` |
-| `.agents/skills/zhiyun-lecture-notes/` | 用户 Agent 的通用讲义规范 |
-| `tests/` | 合成/离线回归；当前 89 项 |
+| `.agents/skills/zhiyun-lecture-notes/` | 薄 Skill 入口 + progressive-disclosure reference modules |
+| `src/handouter/agents/` | GUI bundle 与 Codex/Claude CLI interaction adapters |
+| `tests/` | 合成/离线回归；当前 141 项（macOS 本机），含 Agent adapters、GUI bundle、Skill module plan、ZIP/TUI/多输出/格式约束、Windows 路径/进程/doctor/portable workspace/文件名 |
 | `pipeline.py` / `build_*.py` / `generate_*.py` / `clean*.py` | 单课 legacy，不是生产入口 |
 | `zhiyun_to_feishu.py` | legacy 飞书实验；主链路不调用 |
 | 根目录课程音频/PPT/讲义 | 私有历史样例；验收前不物理迁移 |
 
 ## 审计边界
 
-验收前工程已经实际运行：89 项回归、真实 ffmpeg、本地 2 分钟 SenseVoice、合成私有网络资产 E2E、干净 venv 离线安装。没有登录真实智云完成 v1.4 页面验收，没有跑整门 3 小时 ASR，没有自动运行用户 Agent，也没有逐句核验旧样例讲义。
+当前工程已有真实 ffmpeg、本地短音频 SenseVoice、合成网络资产 E2E、离线安装和用户完整长课运行记录。最新自动化回归与真实 Codex 四模式生成结果见 `PROJECT_STATUS.md`；Codex 本轮复用已有 ASR，不能扩大为重新跑通媒体下载/ASR。Windows 真机/runner、GUI 上传、Claude、取消、第二门不同课程及更多智云页面/媒体兼容性仍待验收。独立 AI 语义核对不替代教师确认与源材料疑点核实。
 
-因此当前最准确结论是：**工程已进入正式验收阶段，而不是“所有真实场景已经通过”。**
+因此当前最准确结论是：**主链路已经过真实长课验证，项目正在从“能跑通”转向 Prompt/格式和普通用户体验收敛。**

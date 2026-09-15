@@ -24,6 +24,14 @@ class PrepareResult:
 
 
 @dataclass(frozen=True)
+class RefreshHandoffResult:
+    workspace: Path
+    handoff: HandoffSummary
+    validation: ValidationReport
+    archived_prompt: Path
+
+
+@dataclass(frozen=True)
 class BuildResult:
     prepare: PrepareResult
     asr: ASRResult
@@ -43,9 +51,11 @@ def prepare_lecture(
     slides_meta: str | Path | None = None,
     slides_zip: str | Path | None = None,
     mode: str = "deep",
+    modes: tuple[str, ...] | list[str] | None = None,
     use_slides_as_source: bool | None = None,
     embed_slides: bool = False,
     allow_web: bool = False,
+    format_profile: str = "clean",
     skill_path: str | Path | None = None,
     source_type: str = "local_existing_materials",
 ) -> PrepareResult:
@@ -94,9 +104,11 @@ def prepare_lecture(
         handoff = create_handoff(
             staging,
             mode=mode,
+            modes=modes,
             use_slides_as_source=resolved_use_slides,
             embed_slides=embed_slides,
             allow_web=allow_web,
+            format_profile=format_profile,
             skill_path=skill_path,
         )
         validation = validate_workspace(staging, update_state=True)
@@ -124,6 +136,98 @@ def prepare_lecture(
     return PrepareResult(target, materials, handoff, validation)
 
 
+def refresh_handoff(
+    workspace: str | Path,
+    *,
+    mode: str | None = None,
+    modes: tuple[str, ...] | list[str] | None = None,
+    use_slides_as_source: bool | None = None,
+    embed_slides: bool | None = None,
+    allow_web: bool | None = None,
+    format_profile: str | None = None,
+    skill_path: str | Path | None = None,
+) -> RefreshHandoffResult:
+    """Create a new Prompt for an existing lecture without rerunning media/ASR.
+
+    The previous Prompt and sources index are archived under ``handoff/history``.
+    If regeneration fails, the previous handoff/state are restored.
+    """
+    root = Path(workspace)
+    if not root.is_dir():
+        raise NotADirectoryError(f"讲次工作区不存在: {root}")
+    prompt = root / "handoff" / "PROMPT.md"
+    sources_path = root / "handoff" / "sources.json"
+    state_path = root / "state.json"
+    if not prompt.is_file() or not sources_path.is_file() or not state_path.is_file():
+        raise FileNotFoundError("工作区缺少现有 handoff/state，无法刷新 Prompt")
+
+    current = read_json(sources_path)
+    options = current.get("options", {}) if isinstance(current, dict) else {}
+    current_modes = current.get("modes") if isinstance(current.get("modes"), list) else None
+    if modes is not None:
+        resolved_modes = list(modes)
+    elif mode is not None:
+        resolved_modes = [mode]
+    else:
+        resolved_modes = current_modes or [str(current.get("mode") or "deep")]
+    resolved_mode = resolved_modes[0]
+    resolved_use_slides = bool(options.get("use_slides_as_source")) if use_slides_as_source is None else bool(use_slides_as_source)
+    resolved_embed = bool(options.get("embed_slides")) if embed_slides is None else bool(embed_slides)
+    resolved_web = bool(options.get("allow_web")) if allow_web is None else bool(allow_web)
+    resolved_format = format_profile or str(options.get("format_profile") or "clean")
+    if resolved_embed:
+        resolved_use_slides = True
+
+    history = root / "handoff" / "history"
+    history.mkdir(exist_ok=True)
+    index = 1
+    while (history / f"task-{index:03d}-PROMPT.md").exists() or (history / f"task-{index:03d}-sources.json").exists():
+        index += 1
+    archived_prompt = history / f"task-{index:03d}-PROMPT.md"
+    archived_sources = history / f"task-{index:03d}-sources.json"
+    current_skill = root / "handoff" / "skill"
+    archived_skill = history / f"task-{index:03d}-skill"
+    previous_state = state_path.read_bytes()
+    prompt.replace(archived_prompt)
+    sources_path.replace(archived_sources)
+    if current_skill.is_dir():
+        current_skill.replace(archived_skill)
+
+    try:
+        handoff = create_handoff(
+            root,
+            mode=resolved_mode,
+            modes=resolved_modes,
+            use_slides_as_source=resolved_use_slides,
+            embed_slides=resolved_embed,
+            allow_web=resolved_web,
+            format_profile=resolved_format,
+            skill_path=skill_path,
+        )
+        validation = validate_workspace(root, update_state=True)
+        if not validation.ok:
+            raise RuntimeError("刷新 Prompt 后工作区验证失败: " + "; ".join(validation.errors))
+    except BaseException:
+        try:
+            (root / "handoff" / "PROMPT.md").unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            (root / "handoff" / "sources.json").unlink()
+        except FileNotFoundError:
+            pass
+        if current_skill.is_dir():
+            shutil.rmtree(current_skill, ignore_errors=True)
+        archived_prompt.replace(prompt)
+        archived_sources.replace(sources_path)
+        if archived_skill.is_dir():
+            archived_skill.replace(current_skill)
+        state_path.write_bytes(previous_state)
+        raise
+
+    return RefreshHandoffResult(root, handoff, validation, archived_prompt)
+
+
 def build_from_audio(
     workspace_root: str | Path,
     *,
@@ -134,9 +238,11 @@ def build_from_audio(
     slides_meta: str | Path | None = None,
     slides_zip: str | Path | None = None,
     mode: str = "deep",
+    modes: tuple[str, ...] | list[str] | None = None,
     use_slides_as_source: bool | None = None,
     embed_slides: bool = False,
     allow_web: bool = False,
+    format_profile: str = "clean",
     skill_path: str | Path | None = None,
     device: str = "auto",
     language: str = "auto",
@@ -170,9 +276,11 @@ def build_from_audio(
             slides_meta=slides_meta,
             slides_zip=slides_zip,
             mode=mode,
+            modes=modes,
             use_slides_as_source=use_slides_as_source,
             embed_slides=embed_slides,
             allow_web=allow_web,
+            format_profile=format_profile,
             skill_path=skill_path,
             source_type="local_audio_asr",
         )
@@ -198,9 +306,11 @@ def build_from_asset_zip(
     course_title: str,
     asset_zip: str | Path,
     mode: str = "deep",
+    modes: tuple[str, ...] | list[str] | None = None,
     use_slides_as_source: bool | None = None,
     embed_slides: bool = False,
     allow_web: bool = False,
+    format_profile: str = "clean",
     skill_path: str | Path | None = None,
     device: str = "auto",
     language: str = "auto",
@@ -215,9 +325,11 @@ def build_from_asset_zip(
         media_source=media_source,
         slides_zip=asset_zip,
         mode=mode,
+        modes=modes,
         use_slides_as_source=use_slides_as_source,
         embed_slides=embed_slides,
         allow_web=allow_web,
+        format_profile=format_profile,
         skill_path=skill_path,
         device=device,
         language=language,
@@ -236,9 +348,11 @@ def build_from_media(
     slides_meta: str | Path | None = None,
     slides_zip: str | Path | None = None,
     mode: str = "deep",
+    modes: tuple[str, ...] | list[str] | None = None,
     use_slides_as_source: bool | None = None,
     embed_slides: bool = False,
     allow_web: bool = False,
+    format_profile: str = "clean",
     skill_path: str | Path | None = None,
     device: str = "auto",
     language: str = "auto",
@@ -277,9 +391,11 @@ def build_from_media(
             slides_meta=slides_meta,
             slides_zip=slides_zip,
             mode=mode,
+            modes=modes,
             use_slides_as_source=use_slides_as_source,
             embed_slides=embed_slides,
             allow_web=allow_web,
+            format_profile=format_profile,
             skill_path=skill_path,
             source_type=source_type,
         )

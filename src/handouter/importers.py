@@ -10,6 +10,8 @@ import zipfile
 from decimal import Decimal, InvalidOperation
 from pathlib import Path, PurePosixPath
 
+from .platform_support import is_portable_path_component
+
 MAX_ZIP_MEMBERS = 10_000
 MAX_ZIP_BYTES = 512 * 1024 * 1024
 MAX_IMAGE_BYTES = 32 * 1024 * 1024
@@ -77,8 +79,11 @@ def _safe_zip_name(name: str) -> PurePosixPath:
     if not isinstance(name, str) or not name or re.search(r'[\x00-\x1f\\:*?"<>|]', name):
         raise ValueError("ZIP 中包含不安全或跨平台歧义路径")
     body = name[:-1] if name.endswith("/") else name
-    if any(part in ("", ".", "..") for part in body.split("/")):
+    parts = body.split("/")
+    if any(part in ("", ".", "..") for part in parts):
         raise ValueError("ZIP 路径不得是绝对路径或包含空段、点、上级目录")
+    if any(not is_portable_path_component(part) for part in parts):
+        raise ValueError("ZIP 路径包含 Windows/macOS/Linux 间不可移植的文件名")
     return PurePosixPath(body)
 
 

@@ -16,6 +16,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from .platform_support import is_portable_path_component
+
 SCHEMA_VERSION = "1"
 SUPPORTED_IMAGES = {".jpg", ".jpeg", ".png", ".webp"}
 
@@ -49,10 +51,8 @@ def sha256_file(path: Path) -> str:
 
 def validate_lecture_id(lecture_id: str) -> str:
     value = lecture_id.strip()
-    if not value or value in {".", ".."} or len(value) > 120:
-        raise ValueError("lecture_id 必须是 1-120 个字符的稳定讲次标识")
-    if "/" in value or "\\" in value or any(ord(ch) < 32 for ch in value):
-        raise ValueError("lecture_id 不能包含路径分隔符或控制字符")
+    if len(value) > 120 or not is_portable_path_component(value):
+        raise ValueError("lecture_id 必须是 1-120 个字符且可作为 macOS/Windows/Linux 目录名")
     return value
 
 
@@ -126,10 +126,10 @@ def _safe_image_name(value: Any) -> str | None:
         return None
     if not isinstance(value, str) or not value:
         raise ValueError("PPT filename 必须是文件名或 null")
-    if "/" in value or "\\" in value or any(ord(ch) < 32 for ch in value):
-        raise ValueError("PPT filename 不能包含路径分隔符或控制字符")
+    if not is_portable_path_component(value):
+        raise ValueError("PPT filename 必须是跨平台可移植的单个文件名")
     name = Path(value)
-    if name.name != value or value in {".", ".."}:
+    if name.name != value:
         raise ValueError("PPT filename 只能是当前 slides 目录中的文件名")
     if name.suffix.lower() not in SUPPORTED_IMAGES:
         raise ValueError(f"不支持的 PPT 图片类型: {value}")

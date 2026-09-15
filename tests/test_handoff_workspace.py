@@ -59,7 +59,10 @@ class HandoffWorkspaceTests(unittest.TestCase):
         self.assertEqual(manifest["transcript"]["timestamp_kind"], "unavailable")
         self.assertEqual(manifest["slides"]["event_count"], 0)
         prompt = (workspace / "handoff" / "PROMPT.md").read_text()
-        self.assertIn("不按字数均摊时间", prompt)
+        sources = json.loads((workspace / "handoff" / "sources.json").read_text())
+        self.assertIn("handoff/skill/references/common/evidence.md", sources["skill"]["modules"])
+        evidence = (workspace / "handoff" / "skill" / "references" / "common" / "evidence.md").read_text()
+        self.assertIn("word count", evidence)
         self.assertNotIn("{{", prompt)
         self.assertTrue(validate_workspace(workspace).ok)
 
@@ -91,7 +94,14 @@ class HandoffWorkspaceTests(unittest.TestCase):
         sources = json.loads((result.workspace / "handoff" / "sources.json").read_text())
         self.assertFalse(sources["options"]["use_slides_as_source"])
         self.assertEqual(sources["slides"]["image_count"], 1)
-        self.assertIn("不要读取或依赖 PPT", (result.workspace / "handoff" / "PROMPT.md").read_text())
+        self.assertIn("handoff/skill/references/slides/ignore.md", sources["skill"]["modules"])
+        ignore_rule = (result.workspace / "handoff" / "skill" / "references" / "slides" / "ignore.md").read_text()
+        self.assertIn("Do not use PPT", ignore_rule)
+
+    def test_local_slide_filename_must_be_windows_portable(self):
+        slides = self.make_slides(None, images=("CON.png",))
+        with self.assertRaises(ValueError):
+            self.prepare(lecture_id="portable-slide-name", slides_dir=slides)
 
     def test_source_transcript_is_never_modified(self):
         before = hashlib.sha256(self.transcript.read_bytes()).hexdigest()
@@ -106,6 +116,18 @@ class HandoffWorkspaceTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             self.prepare()
         self.assertEqual(sentinel.read_text(), "keep")
+
+    def test_lecture_id_rejects_windows_invalid_characters(self):
+        for lecture_id in ("course:01", "course?01", 'course"01', "course|01"):
+            with self.subTest(lecture_id=lecture_id):
+                with self.assertRaises(ValueError):
+                    self.prepare(lecture_id=lecture_id)
+
+    def test_lecture_id_rejects_windows_reserved_device_names(self):
+        for lecture_id in ("CON", "nul.txt", "COM1", "lpt9.log"):
+            with self.subTest(lecture_id=lecture_id):
+                with self.assertRaises(ValueError):
+                    self.prepare(lecture_id=lecture_id)
 
     def test_two_courses_are_isolated(self):
         a = self.prepare(lecture_id="a-001", title="课程 Alpha", mode="summary")
@@ -187,6 +209,20 @@ class HandoffWorkspaceTests(unittest.TestCase):
         self.assertFalse(report.ok)
         self.assertTrue(any("禁止嵌入" in error for error in report.errors))
         self.assertTrue(any("凭证" in error for error in report.errors))
+
+    def test_folded_content_still_checks_credentials_and_image_policy(self):
+        slides = self.make_slides(None)
+        result = self.prepare(slides_dir=slides, embed_slides=False)
+        note = result.workspace / "notes" / "deep-001.md"
+        note.write_text(
+            "# 课程\n\n<details><summary>来源</summary>\n\n"
+            "![slide](../slides/images/slide_001.png)\n\napi_key=SYNTHETIC_SECRET\n</details>\n",
+            encoding="utf-8",
+        )
+        report = validate_note_output(result.workspace)
+        self.assertEqual(report.image_links, 1)
+        self.assertTrue(any("凭证" in error for error in report.errors))
+        self.assertTrue(any("禁止嵌入" in error for error in report.errors))
 
     def test_cli_prepare_reports_handoff_not_agent_completion(self):
         stdout = io.StringIO()

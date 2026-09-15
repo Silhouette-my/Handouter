@@ -8,7 +8,9 @@ name = "handouter"
 version = "0.2.0"
 description = "Local-first lecture material preparation and Agent handoff"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+  "windows-curses>=2.4; sys_platform == 'win32'",
+]
 
 [project.optional-dependencies]
 asr = [
@@ -16,12 +18,11 @@ asr = [
   "torch>=2",
 ]
 tui = [
-  "textual>=0.50",
+  "windows-curses>=2.4; sys_platform == 'win32'",
 ]
 all = [
   "funasr>=1.4,<2",
   "torch>=2",
-  "textual>=0.50",
 ]
 
 [project.scripts]

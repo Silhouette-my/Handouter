@@ -1,8 +1,9 @@
 """Tiny stdlib-only PEP 517 backend for Handouter.
 
-The core package intentionally has no runtime dependencies. Keeping this backend
-inside the repository allows `pip install --no-index .` to work in a clean venv
-without downloading setuptools just to build the wheel.
+The package keeps build-time dependencies at zero. macOS/Linux core installs
+remain offline-capable; Windows declares a conditional ``windows-curses``
+runtime dependency for the ASCII TUI. The in-repo backend still avoids
+downloading setuptools merely to build the wheel.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ def _metadata_text() -> str:
         f"Summary: {project.get('description', '')}",
         f"Requires-Python: {project.get('requires-python', '>=3.11')}",
     ]
+    lines.extend(f"Requires-Dist: {dependency}" for dependency in project.get("dependencies", []))
     return "\n".join(lines) + "\n"
 
 
@@ -79,6 +81,15 @@ def _build_wheel_file(wheel_directory: str, *, editable: bool) -> str:
         for path in sorted(SRC.rglob("*")):
             if path.is_file() and "__pycache__" not in path.parts and path.suffix in {".py", ".json", ".md"}:
                 files[(Path("handouter") / path.relative_to(SRC)).as_posix()] = path.read_bytes()
+        exporter = ROOT / "zhiyun_exporter.user.js"
+        if exporter.is_file():
+            files["handouter/assets/zhiyun_exporter.user.js"] = exporter.read_bytes()
+        skill_root = ROOT / ".agents" / "skills" / "zhiyun-lecture-notes"
+        for source in sorted(skill_root.rglob("*.md")):
+            if not source.is_file():
+                continue
+            relative = source.relative_to(skill_root)
+            files[(Path("handouter/assets/zhiyun-lecture-notes") / relative).as_posix()] = source.read_bytes()
 
     rows = [_record_row(name, data) for name, data in sorted(files.items())]
     record_name = f"{dist_info}/RECORD"
@@ -121,7 +132,17 @@ def build_sdist(sdist_directory: str, config_settings=None) -> str:
     base = f"{_dist_name()}-{_version()}"
     filename = f"{base}.tar.gz"
     target = directory / filename
-    include = ["pyproject.toml", "handouter_build.py", "README.md"]
+    include = [
+        "pyproject.toml",
+        "handouter_build.py",
+        "README.md",
+        "zhiyun_exporter.user.js",
+        ".agents/skills/zhiyun-lecture-notes/SKILL.md",
+    ]
+    include += [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted((ROOT / ".agents" / "skills" / "zhiyun-lecture-notes" / "references").rglob("*.md"))
+    ]
     include += [path.relative_to(ROOT).as_posix() for path in sorted(SRC.rglob("*.py"))]
     with tarfile.open(target, "w:gz") as archive:
         for relative in include:
