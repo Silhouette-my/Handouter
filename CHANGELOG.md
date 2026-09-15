@@ -1,5 +1,12 @@
 # 变更记录
 
+## 2026-09-15 — Markdown 与离线 HTML 双格式交付
+
+- 新增跨平台 `export-html`、TUI H 快捷导出与 Windows 拖拽入口；本机 CLI Agent 校验 Markdown 后自动导出本次 HTML，失败明确报告，不覆盖旧讲义。
+- 图片以 data URI 内嵌，LaTeX 数学转 MathML，保留重点框和默认折叠信息；过滤主动 HTML 并使用 CSP，拒绝缺失/越界/远程图片。
+- 自动 Prompt、手工模板、网页交付约定与公共完成检查统一双格式要求；网页能力不足时明确 HTML 待导出/补图。
+- setup 安装器包含 HTML extra。合成讲义实际转换与跨平台逻辑回归已覆盖；浏览器本地文件预览被工具策略阻止，Windows/macOS 实际阅读仍待用户验收。
+
 ## 2026-09-15 — 统一安装与启动入口
 
 - Windows 双击 setup/start 脚本，macOS 使用对应 Bash 入口；共用安装器管理项目 `.venv`、ASR extra 和 FFmpeg 检查/安装，不再要求逐个补包或激活环境。

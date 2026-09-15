@@ -92,6 +92,17 @@ PYTHONPATH=src .venv/bin/python -m handouter agent-run \
 
 ## 安装与环境检查
 
+### HTML 离线阅读版
+
+每种模式同时提供 Markdown 编辑稿和 HTML 阅读版。HTML 将真实 PPT 图片内嵌，公式转换为 MathML；无需 VS Code、插件或联网资源，使用近期版本 Edge/Chrome/Firefox/Safari 打开即可。考核重点框常显，课程信息、每章来源、末尾待核对保持折叠。
+
+- 更新后重新运行 setup 安装器，自动包含 HTML 依赖；也可在虚拟环境执行 `python -m pip install ".[html]"`。
+- 本机 CLI Agent 的 Markdown 校验成功后自动导出本次各模式的 HTML；HTML 失败会单独报告，保留已完成 Markdown，并返回非零状态。
+- 网页/GUI AI 的 Prompt 要求双格式交付；无法生成完整离线 HTML 时必须说明。将 Markdown 和对应 PPT 保存在原讲次结构中，在 TUI 按 **H** 选择讲次文件夹或 `.md`，即可导出并尝试打开浏览器。Windows 也可把文件/讲次文件夹拖到 `export-html.cmd`。
+- 两端通用命令：`python -m handouter export-html "讲次文件夹或Markdown路径"`。HTML 写在 Markdown 旁边；再次导出递增文件名，不覆盖旧文件。分享时只需发送 `.html`。
+
+公式使用 `$...$` 和独占行的 `$$...$$`，支持的是转换器可识别的 LaTeX 数学子集，不支持完整 TeX 宏包。图片必须是讲次内真实 PNG/JPEG/GIF/WebP；缺图或远程图会报错，不自动下载。网页 AI 仅返回插图占位时须先补真实图片；导出不能凭空恢复课件。旧交接包需刷新 Prompt 才能获得双格式要求。
+
 ### 推荐：统一安装与启动
 
 Windows 安装 **Python 3.11（含 Python Launcher）** 后，在解压或克隆的仓库中双击 `setup-handouter.cmd`；安装完成后双击 `start-handouter.cmd`。不用激活虚拟环境或逐个安装 ASR 包。FFmpeg 缺失时自动调用 winget（Windows 的“应用安装程序”提供）。

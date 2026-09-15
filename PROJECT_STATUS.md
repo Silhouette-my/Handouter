@@ -1,5 +1,11 @@
 # 项目状态
 
+### HTML 双格式阅读交付
+
+- 每种模式保留 Markdown，并支持导出离线单文件 HTML；图片内嵌、数学转 MathML、折叠信息保留。CLI Agent 自动导出，GUI/网页返回稿可在 TUI 按 H 或通过 export-html 导出。
+- 本地/网页 Prompt 与公共完成检查已明确交付和能力不足边界；已有 handoff 需刷新。HTML extra 随统一安装器安装，旧 HTML 不覆盖。
+- 合成讲义的真实转换已验证；浏览器工具阻止 file URL，尚未完成真实 Windows/macOS 浏览器视觉验收，不宣称全平台阅读已通过。
+
 ### 统一安装入口
 
 - 新增 Windows setup/start `.cmd` 与 macOS `.command` 入口，共用 `setup_handouter.py`：复用项目虚拟环境，安装 ASR extra，按需通过 winget/Homebrew 安装 FFmpeg。

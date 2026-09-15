@@ -13,6 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+html = ["markdown-it-py>=3,<5", "mdit-py-plugins>=0.4,<1", "latex2mathml>=3,<4"]
 asr = [
   "funasr>=1.4,<2",
   "torch>=2",
@@ -22,6 +23,9 @@ tui = [
   "windows-curses>=2.4; sys_platform == 'win32'",
 ]
 all = [
+  "markdown-it-py>=3,<5",
+  "mdit-py-plugins>=0.4,<1",
+  "latex2mathml>=3,<4",
   "funasr>=1.4,<2",
   "torch>=2",
   "torchaudio>=2",

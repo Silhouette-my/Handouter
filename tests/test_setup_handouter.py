@@ -24,7 +24,7 @@ class SetupTests(unittest.TestCase):
                  contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(setup.main([]), 0)
             commands = [call.args[0] for call in run.call_args_list]
-            self.assertIn([str(python), '-m', 'pip', 'install', '.[asr]'], commands)
+            self.assertIn([str(python), '-m', 'pip', 'install', '.[asr,html]'], commands)
             self.assertFalse(any('venv' in command or '--force-reinstall' in command for command in commands))
 
     def test_incomplete_environment_is_not_overwritten(self):

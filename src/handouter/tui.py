@@ -626,6 +626,7 @@ def _run_curses() -> None:  # pragma: no cover - interactive UI
                 attr = curses.A_REVERSE if selected == idx else 0
                 _safe_add(stdscr, 21, col, text, attr)
                 col += len(text) + 3
+            _safe_add(stdscr, 22, 5, "H = EXPORT HTML (offline reading)")
 
             _box(stdscr, 24, 2, height - 3, right - 2, " STATUS ")
             modes = selected_modes(state)
@@ -634,6 +635,19 @@ def _run_curses() -> None:  # pragma: no cover - interactive UI
             stdscr.refresh()
 
             key = stdscr.getch()
+            if key in (ord('h'), ord('H')):
+                default = str(_workspace_for_state(state) or state.get('source_note') or '')
+                value, committed = _edit_value(stdscr, 'Markdown file or lecture folder', default)
+                if committed and value.strip():
+                    try:
+                        from .html_export import export_html
+                        import webbrowser
+                        outputs = export_html(normalize_terminal_path(value))
+                        webbrowser.open(outputs[0].as_uri())
+                        status = f'Exported {len(outputs)} offline HTML file(s) beside Markdown: {outputs[0].name}'
+                    except (OSError, ValueError, RuntimeError) as exc:
+                        status = f'HTML export failed: {exc}'
+                continue
             if key in (ord("q"), ord("Q")):
                 return
             if key in (9, 258):  # Tab / Down

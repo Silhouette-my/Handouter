@@ -91,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
             run([sys.executable, "-m", "venv", str(ROOT / ".venv")])
         run([str(python), "-c", "import sys; assert sys.version_info >= (3, 11), 'Python 3.11+ required'"])
         print("[2/4] Installing Handouter, ASR and terminal dependencies...", flush=True)
-        run([str(python), "-m", "pip", "install", ".[asr]"])
+        run([str(python), "-m", "pip", "install", ".[asr,html]"])
         print("[3/4] Checking FFmpeg...", flush=True)
         ensure_media()
         print("[4/4] Verifying installed runtime...", flush=True)

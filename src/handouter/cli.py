@@ -159,6 +159,8 @@ def _build_parser() -> argparse.ArgumentParser:
     note.add_argument("--output", help="只检查指定的 notes/ 下输出；默认检查全部 expected_outputs")
     note.add_argument("--update-state", action="store_true", help="将结构校验结果写入 state.json；不代表语义验收通过")
 
+    html_export = sub.add_parser("export-html", help="将 Markdown 或整个讲次导出为离线单文件 HTML")
+    html_export.add_argument("source", help="Markdown 文件或包含 notes/ 的讲次文件夹")
     sub.add_parser("doctor", help="检查 Python、ffmpeg、ASR 与 TUI 可用性，不安装任何东西")
     sub.add_parser("tui", help="启动标准库 curses 全屏 ASCII TUI；可选择 GUI handoff / Codex CLI / Claude CLI")
     return parser
@@ -211,16 +213,21 @@ def _apply_agent_interaction(
             "included_files": list(bundle.included_files),
         }, 0
     result = run_cli_agent(workspace, agent=mode, model=agent_model)
+    from .html_export import export_agent_html
+    html_delivery = export_agent_html(workspace, result)
+    if html_delivery['errors']:
+        print('handouter: error: Markdown 已保存；HTML 导出失败：' + '; '.join(html_delivery['errors']), file=sys.stderr)
     return {
         "mode": "cli",
         "agent": result.agent,
         "agent_was_run": True,
         "returncode": result.returncode,
         "expected_outputs": result.outputs,
+        "html_delivery": html_delivery,
         "validation_ok": result.validation_ok,
         "validation_errors": list(result.validation_errors),
         "semantic_review": "required",
-    }, (0 if result.validation_ok and result.returncode == 0 else 3)
+    }, (0 if result.validation_ok and result.returncode == 0 and html_delivery['status'] == 'ready' else 3)
 
 
 def _run_product(args: argparse.Namespace) -> int:
@@ -470,15 +477,20 @@ def _agents_status(_args: argparse.Namespace) -> int:
 
 def _agent_run(args: argparse.Namespace) -> int:
     result = run_cli_agent(args.workspace, agent=args.agent, model=args.agent_model)
+    from .html_export import export_agent_html
+    html_delivery = export_agent_html(args.workspace, result)
+    if html_delivery['errors']:
+        print('handouter: error: Markdown 已保存；HTML 导出失败：' + '; '.join(html_delivery['errors']), file=sys.stderr)
     print(json.dumps({
         "agent": result.agent,
         "returncode": result.returncode,
         "outputs": result.outputs,
+        "html_delivery": html_delivery,
         "validation_ok": result.validation_ok,
         "validation_errors": list(result.validation_errors),
         "semantic_review": "required",
     }, ensure_ascii=False, indent=2))
-    return 0 if result.returncode == 0 and result.validation_ok else 3
+    return 0 if result.returncode == 0 and result.validation_ok and html_delivery['status'] == 'ready' else 3
 
 
 def _bundle(args: argparse.Namespace) -> int:
@@ -562,6 +574,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "run":
             return _run_product(args)
+        if args.command == "export-html":
+            from .html_export import export_html
+            print(json.dumps({"html": [str(path) for path in export_html(args.source)]}, ensure_ascii=False, indent=2))
+            return 0
         if args.command == "prepare":
             return _prepare(args)
         if args.command == "build-audio":

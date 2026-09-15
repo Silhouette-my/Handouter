@@ -58,6 +58,12 @@ Example syntax only; substitute verified values, and do not copy these illustrat
 
 Keep the chapter's body outside the fold. Do not use `open`, wrap the final HTML in a code fence, or leave timing/source IDs in the visible summary label. Escape literal `<`, `>` and `&` in metadata values. Use blank lines around the HTML blocks so Markdown body text renders normally. Invisible HTML comments do not replace the chapter's user-expandable fold.
 
+## Offline HTML reading delivery
+
+Each selected mode is delivered as Markdown plus an equivalent offline HTML reading file. Keep the content, ordering, assessment callout and closed details folds identical. Embed real slide images and render formulas as MathML or embedded SVG; do not depend on CDN scripts or local absolute paths. Use `$...$` and standalone `$$...$$` for Markdown math, and forward-slash relative image links.
+
+For local CLI tasks, the Agent writes the requested Markdown and Handouter exports HTML after validation. For browser/GUI tasks with file-generation capability, also deliver a same-stem `.html` file. If offline math rendering, real image extraction or file creation is unavailable, deliver complete Markdown and explicitly report `HTML 待本地导出/补图`; direct the user to save the Markdown and use Handouter's H / export-html action. Do not claim partial HTML, missing images, raw LaTeX or a renamed Markdown file is a complete reading deliverable.
+
 ## Final unresolved checks
 
 When unresolved terms, conflicting evidence or missing material remain, put the final checklist inside one closed `<details>` block labelled `待核对`. Do not add a visible `## 待核对` chapter or repeat the checklist outside the fold. Omit the block if there are no unresolved items.
