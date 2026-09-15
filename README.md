@@ -110,7 +110,7 @@ py -3.11 -m venv .venv
 
 若 Windows 机器需要完全离线安装，应提前把 `windows-curses` wheel 放入本地 wheelhouse，再使用 `--no-index --find-links <wheelhouse>`。macOS/Linux 使用系统/stdlib curses；Windows 使用 `windows-curses`，但上层 TUI 代码仍是同一套。
 
-ASR 仍需要 `funasr` 和 `torch`。Windows + NVIDIA 建议安装与本机 CUDA 环境匹配的 PyTorch build；未启用 CUDA 时仍可回退 CPU。ffmpeg/ffprobe 继续通过 PATH 检测，Windows 可用例如：
+ASR 需要 `funasr`、`torch` 和匹配主版本的 `torchaudio`。Windows + NVIDIA 建议安装与本机 CUDA 环境匹配的 PyTorch/torchaudio build；未启用 CUDA 时仍可回退 CPU。ffmpeg/ffprobe 继续通过 PATH 检测，Windows 可用例如：
 
 ```powershell
 winget install Gyan.FFmpeg

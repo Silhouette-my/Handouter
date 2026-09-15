@@ -44,6 +44,7 @@ class BuildBackendTests(unittest.TestCase):
                 self.assertIn("Provides-Extra: asr", metadata)
                 self.assertIn('Requires-Dist: funasr>=1.4,<2; extra == "asr"', metadata)
                 self.assertIn('Requires-Dist: torch>=2; extra == "asr"', metadata)
+                self.assertIn('Requires-Dist: torchaudio>=2; extra == "asr"', metadata)
                 self.assertIn('Requires-Dist: windows-curses>=2.4; sys_platform == \'win32\' and extra == "tui"', metadata)
                 self.assertIn("handouter-0.2.0.dist-info/RECORD", names)
 

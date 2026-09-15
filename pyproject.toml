@@ -16,6 +16,7 @@ dependencies = [
 asr = [
   "funasr>=1.4,<2",
   "torch>=2",
+  "torchaudio>=2",
 ]
 tui = [
   "windows-curses>=2.4; sys_platform == 'win32'",
@@ -23,6 +24,7 @@ tui = [
 all = [
   "funasr>=1.4,<2",
   "torch>=2",
+  "torchaudio>=2",
 ]
 
 [project.scripts]

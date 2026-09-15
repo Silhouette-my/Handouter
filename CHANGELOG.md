@@ -1,5 +1,10 @@
 # 变更记录
 
+## 2026-09-15 — 补齐 ASR 音频后端依赖
+
+- `asr` / `all` extra 增加 `torchaudio>=2`，避免 FunASR 在 Windows 上因缺少 torchaudio 或 kaldi-native-fbank 后端失败。
+- torchaudio 需要与已安装的 PyTorch 主版本匹配；Windows CUDA 环境按 PyTorch 官方源安装对应版本。
+
 ## 2026-09-15 — 修复 Windows ASR extra 安装元数据
 
 - 修复自定义 PEP 517 构建后端遗漏 `Provides-Extra` / `Requires-Dist` 元数据的问题。
