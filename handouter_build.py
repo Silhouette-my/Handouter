@@ -51,7 +51,8 @@ def _metadata_text() -> str:
     for extra, dependencies in project.get("optional-dependencies", {}).items():
         lines.append(f"Provides-Extra: {extra}")
         for dependency in dependencies:
-            lines.append(f'Requires-Dist: {dependency}; extra == "{extra}"')
+            separator = " and " if ";" in dependency else "; "
+            lines.append(f'Requires-Dist: {dependency}{separator}extra == "{extra}"')
     return "\n".join(lines) + "\n"
 
 
